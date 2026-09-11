@@ -1,0 +1,34 @@
+# 1. BẢO MẬT: Tuyệt đối không commit file chứa API Key và mật khẩu
+.env
+*.env.local
+
+# 2. Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# 3. Pytest & Coverage cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 4. Dữ liệu thử nghiệm & File tải lên tạm thời
+sample_test.txt
+*.pdf
+!sample.pdf
+data/
+
+# 5. IDE & OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# 6. Docker logs
+*.log

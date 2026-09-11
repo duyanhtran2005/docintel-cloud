@@ -1,0 +1,56 @@
+# ==========================================
+# STAGE 1: Builder (Biên dịch wheel gói thư viện)
+# ==========================================
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Cài đặt các công cụ build hệ thống tối thiểu
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+# Tạo các file wheel đóng gói thư viện để copy sang runtime
+RUN pip install --upgrade pip && \
+    pip wheel --no-cache-dir --wheel-dir /build/wheels -r requirements.txt
+
+# ==========================================
+# STAGE 2: Runtime (Image sản xuất tối ưu)
+# ==========================================
+FROM python:3.11-slim AS runner
+
+WORKDIR /app
+
+# Cài đặt thư viện C-runtime tối thiểu (libpq5 cho PostgreSQL)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy wheels từ stage builder và cài đặt không lưu cache
+COPY --from=builder /build/wheels /wheels
+RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
+
+# Bảo mật: Tạo User non-root để chạy ứng dụng (Tuân thủ chuẩn bảo mật Enterprise)
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+
+# Copy mã nguồn dự án vào container
+COPY --chown=appuser:appuser . /app
+
+# Chuyển quyền thực thi sang user non-root
+USER appuser
+
+# Cấu hình đường dẫn PYTHONPATH
+ENV PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+# Lệnh khởi chạy uvicorn server
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
