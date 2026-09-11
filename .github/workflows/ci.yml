@@ -25,19 +25,18 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-          - 9001:9001
-        options: server /data
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      # Khởi động MinIO bằng lệnh Docker chuẩn
+      - name: Start MinIO Service
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -53,7 +52,7 @@ jobs:
 
       - name: Run Linter (Ruff)
         run: |
-          ruff check . --exit-zero  # Không làm dừng pipeline nếu chỉ là cảnh báo style code
+          ruff check . --exit-zero
 
       - name: Run Unit & Integration Tests (Pytest)
         env:
@@ -72,6 +71,9 @@ jobs:
   build-docker:
     needs: lint-and-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
     steps:
