@@ -1,111 +1,154 @@
-# 🚀 Enterprise Document Intelligence & QA Pipeline (DocIntel-Cloud)
+# 🚀 DocIntel-Cloud: Hệ Thống Xử Lý Tài Liệu Thông Minh & Hỏi Đáp RAG (0-Cost Cloud-Native)
 
-> **Architected for Data & AI Engineers | 100% Zero-Cost Cloud-Native Architecture (0 USD)**
-
-DocIntel-Cloud là hệ thống xử lý tài liệu tự động, băm nhỏ văn bản (Text Chunking), tạo Vector Embeddings, lưu trữ hỗn hợp Hợp nhất (Relational + HNSW Vector Search trong PostgreSQL), và hỗ trợ hỏi đáp tổng hợp ngữ cảnh bằng LLM (Retrieval-Augmented Generation - RAG).
+> **Dự án thực chiến chuẩn Enterprise dành cho Data Engineer & AI Engineer**  
+> **Chi phí vận hành: 100% Miễn Phí (0 VNĐ)** thông qua Docker local và hạ tầng AWS Free Tier.
 
 ---
 
-## 🏗️ System Architecture
+## 🎯 1. Mục Đích Dự Án
+DocIntel-Cloud giải quyết bài toán phân tích và khai thác thông tin từ các tài liệu lớn của doanh nghiệp (báo cáo tài chính, hợp đồng pháp lý, tài liệu kỹ thuật dài hàng trăm trang PDF):
+- **Tự động hóa Ingestion Pipeline**: Tải file PDF, tự động trích xuất nội dung và làm sạch lỗi font, lọc bỏ các ký tự byte điều khiển UTF-8 lỗi (`\x00`).
+- **Phân đoạn thông minh (Chunking)**: Cắt văn bản theo thuật toán cửa sổ trượt (Sliding Window) với tham số `overlap` để bảo tồn trọn vẹn ngữ cảnh của câu.
+- **Lưu trữ Vector & HNSW Index**: Tích hợp PostgreSQL 16 với extension `pgvector`, sử dụng chỉ mục **HNSW (Hierarchical Navigable Small World)** cho phép tìm kiếm ngữ nghĩa theo độ tương đồng Cosine cực nhanh (< 5ms).
+- **Hỏi đáp thông minh (RAG QA)**: Kết nối với các mô hình ngôn ngữ lớn (Google Gemini / Groq Llama 3) để tổng hợp câu trả lời tự nhiên từ tài liệu nội bộ, kèm tính năng **trích dẫn chính xác nguồn dữ liệu (Citation Tracing)** giúp chống "chém gió" (Anti-Hallucination).
+
+---
+
+## 🏗️ 2. Kiến Trúc Hệ Thống
 
 ```text
-               +-------------------------------------------------------------+
-               |                       Client / Frontend                     |
-               +------------------------------+------------------------------+
-                                              |
-                                              | HTTP REST / Streaming SSE
-                                              v
-+-----------------------------------------------------------------------------------------+
-| Docker Network (`docintel-net`)                                                         |
-|                                                                                         |
-|  +-----------------------------------------------------------------------------------+  |
-|  |                             FastAPI Serving Gateway                               |  |
-|  |  - Ingestion Controller (Upload PDF, sliding window chunker)                       |  |
-|  |  - Vector Search Controller (HNSW Cosine Similarity Search)                       |  |
-|  |  - LLM RAG Synthesis Engine (Context formatting + Citation tracing)               |  |
-|  +---------------------+-------------------------------+-----------------------------+  |
-|                        |                               |                                |
-|                        | boto3 S3 API                  | Async SQLAlchemy               |
-|                        v                               v                                |
-|  +------------------------------+     +-------------------------------+                 |
-|  |    MinIO (Object Storage)    |     |      PostgreSQL + pgvector    |                 |
-|  |  - Raw PDFs, DOCX, TXT       |     |  - Document Metadata          |                 |
-|  |  - S3 Bucket: `documents`    |     |  - Chunks & 768D Embeddings   |                 |
-|  +------------------------------+     |  - HNSW Index (Cosine Ops)    |                 |
-|                                       +-------------------------------+                 |
-|                        |                                                                |
-|                        | Cache / Rate Limit                                             |
-|                        v                                                                |
-|  +------------------------------+     +-------------------------------+                 |
-|  |     Redis (Cache & Queue)    |     |    SentenceTransformers /     |                 |
-|  |  - Query response cache      |     |  Groq Cloud / Gemini API      |                 |
-|  +------------------------------+     +-------------------------------+                 |
-+-----------------------------------------------------------------------------------------+
+[Người Dùng / Client]
+          │
+          ▼ (HTTP REST / API)
+┌─────────────────────────────────────────────────────────────┐
+│ FastAPI Serving Gateway (Cổng API trung tâm)                │
+│  - POST /upload: Tiếp nhận file PDF, băm chunk              │
+│  - POST /search: Tìm kiếm vector tương đồng                 │
+│  - POST /qa/query: Tổng hợp câu trả lời bằng AI (RAG)       │
+└──────┬──────────────────────┬───────────────────────────────┘
+       │                      │
+       ▼                      ▼
+┌──────────────────┐   ┌───────────────────────────────┐
+│ MinIO Storage    │   │ PostgreSQL 16 + pgvector      │
+│ (Giả lập AWS S3) │   │ (Lưu trữ quan hệ + Vector DB) │
+│ - Lưu file PDF gốc│  │ - Bảng documents & chunks     │
+│ - Bucket:        │   │ - HNSW Index (Cosine Ops)     │
+│   `documents`    │   └───────────────────────────────┘
+└──────────────────┘                  ▲
+                                      │ (Mã hóa Vector)
+                       ┌──────────────┴────────────────┐
+                       │ Embedding & LLM Engine        │
+                       │ - SentenceTransformers (Local)│
+                       │ - Google Gemini API / Groq    │
+                       └───────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Tech Stack Specification
+## 🛠️ 3. Công Nghệ Sử Dụng
 
 | Thành phần | Công nghệ sử dụng | Vai trò & Lý do lựa chọn |
 |---|---|---|
-| **Framework API** | FastAPI (Python 3.11, AsyncIO, Pydantic v2) | Đảm bảo hiệu năng xử lý bất đồng bộ (I/O-bound) cao nhất. |
-| **Object Storage** | MinIO Container | Giả lập chuẩn AWS S3 API (`boto3`), dễ dàng chuyển đổi sang S3 Cloud không đổi code. |
-| **Database & Vector Store** | PostgreSQL 16 + `pgvector` (HNSW Index) | Xóa bỏ chi phí dùng Vector DB độc lập (Pinecone/Weaviate). Tìm kiếm vector sub-300ms. |
+| **API Framework** | FastAPI (Python 3.11, AsyncIO, Pydantic v2) | Đảm bảo hiệu năng xử lý bất đồng bộ (I/O-bound) cao nhất. |
+| **Object Storage** | MinIO Container | Giả lập chuẩn AWS S3 API (`boto3`), dễ dàng chuyển đổi sang S3 Cloud không cần đổi code. |
+| **Database & Vector Store** | PostgreSQL 16 + `pgvector` (HNSW Index) | Loại bỏ chi phí dùng Vector DB độc lập (Pinecone/Weaviate). Tìm kiếm vector sub-5ms. |
 | **Embedding Engine** | `sentence-transformers` / Gemini API | Chạy local offline 100% trên CPU hoặc gọi Free API Key. |
 | **LLM RAG Engine** | Groq Cloud (Llama-3.1-8b) / Gemini Flash | Tốc độ suy luận siêu nhanh (>500 tokens/sec), 0 USD. |
 | **Containerization** | Docker & Multi-Stage Dockerfile | Đóng gói tối ưu dung lượng image (~300MB), chạy Non-root `appuser`. |
-| **CI/CD Pipeline** | GitHub Actions & GHCR | Tự động hóa kiểm thử `ruff`, `pytest`, build và push Docker Image. |
+| **CI/CD Pipeline** | GitHub Actions & GHCR | Tự động hóa kiểm thử `pytest`, build và push Docker Image lên Registry. |
 
 ---
 
-## ⚡ Quick Start Guide (Local Development)
+## ⚡ 4. Hướng Dẫn Cài Đặt & Khởi Chạy (Local)
 
-### 1. Khởi chạy toàn bộ hạ tầng bằng Docker Compose
+### Bước 1: Khởi động các container hạ tầng
+Mở Terminal tại thư mục dự án và chạy:
 ```bash
-cd docintel-cloud
-docker compose up -d --build
+docker compose up -d
+```
+Lệnh này sẽ khởi chạy 3 dịch vụ ngầm:
+* **MinIO Console**: `http://localhost:9001` (Tài khoản: `minioadmin` / `minioadmin`)
+* **PostgreSQL (pgvector)**: Cổng `5432` (DB: `docintel`, User: `postgres`, Pass: `postgrespassword`)
+* **Redis**: Cổng `6379`
+
+### Bước 2: Cài đặt thư viện Python
+```bash
+pip install -r requirements.txt
 ```
 
-### 2. Kiểm tra các cổng dịch vụ
-* **FastAPI Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* **MinIO Console**: [http://localhost:9001](http://localhost:9001) (User: `minioadmin` / Pass: `minioadmin`)
-* **PostgreSQL (pgvector)**: `localhost:5432` (DB: `docintel`, User: `postgres`, Pass: `postgrespassword`)
+### Bước 3: Cấu hình biến môi trường
+Tạo file `.env` từ file mẫu `.env.example`:
+```bash
+# Trên Windows CMD/PowerShell:
+copy .env.example .env
+
+# Trên Linux/macOS:
+cp .env.example .env
+```
+Sau đó mở file `.env` và điền `GEMINI_API_KEY` hoặc `GROQ_API_KEY` của bạn.
+
+### Bước 4: Chạy ứng dụng FastAPI
+* **Trên PowerShell**:
+  ```powershell
+  $env:PYTHONPATH="src"
+  python -m uvicorn src.api.main:app --reload --port 8000
+  ```
+* **Trên Linux / Mac**:
+  ```bash
+  PYTHONPATH=src python -m uvicorn src.api.main:app --reload --port 8000
+  ```
 
 ---
 
-## 📡 REST API Specifications
+## 📡 5. Hướng Dẫn Sử Dụng API
 
-### 1. Upload & Processing PDF Document
-* **Endpoint**: `POST /api/v1/documents/upload`
-* **Content-Type**: `multipart/form-data`
-* **Payload**: File PDF bất kỳ.
+Sau khi server khởi động, bạn có thể truy cập Swagger UI tương tác tại: **`http://localhost:8000/docs`** hoặc gọi API qua `curl`:
 
-### 2. Semantic Vector Similarity Search
-* **Endpoint**: `POST /api/v1/documents/search`
-* **Payload JSON**:
-```json
-{
-  "query": "DeepSeek-V3.2 architecture performance",
-  "top_k": 3
-}
+### 1. Tải lên tài liệu PDF (`POST /api/v1/documents/upload`)
+Tải file PDF lên hệ thống. Server sẽ tự động lưu vào MinIO, cắt thành các đoạn văn bản nhỏ và lưu vector vào Postgres:
+```bash
+curl -X POST "http://localhost:8000/api/v1/documents/upload" \
+  -F "file=@duong_dan_den_file.pdf"
 ```
 
-### 3. RAG Context QA Engine
-* **Endpoint**: `POST /api/v1/qa/query`
-* **Payload JSON**:
-```json
-{
-  "question": "Mô hình DeepSeek-V3.2 đạt hiệu năng như thế nào?",
-  "top_k": 3
-}
+### 2. Tìm kiếm đoạn văn bản tương đồng (`POST /api/v1/documents/search`)
+Tìm Top K đoạn trích liên quan nhất bằng phép đo Cosine Similarity:
+```bash
+curl -X POST "http://localhost:8000/api/v1/documents/search" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "kiến trúc mô hình", "top_k": 3}'
+```
+
+### 3. Hỏi đáp ngữ cảnh thông minh RAG (`POST /api/v1/qa/query`)
+Đặt câu hỏi, hệ thống tự động tìm kiếm ngữ cảnh và gọi AI để trả lời kèm trích dẫn nguồn:
+```bash
+curl -X POST "http://localhost:8000/api/v1/qa/query" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Mô hình này có ưu điểm gì nổi bật?", "top_k": 3}'
 ```
 
 ---
 
-## 📌 CV Resume Bullet Points
+## 🧪 6. Kiểm Thử Tự Động (Automated Testing)
 
-* **Enterprise Document Intelligence & QA Platform (Cloud-Native Architecture)**
-  * Architected a zero-cost, cloud-native RAG pipeline using **FastAPI**, **PostgreSQL (pgvector)**, and **MinIO (S3-compatible Storage)**, supporting async document ingestion and hybrid semantic search.
-  * Implemented an HNSW-indexed vector search combined with sliding-window chunking, achieving sub-300ms retrieval latency over structured text chunks.
-  * Containerized microservices suite with multi-stage **Docker** builds and orchestrated local-to-cloud workflows via **Docker Compose** and **GitHub Actions CI/CD**.
+Dự án tích hợp đầy đủ kiểm thử tự động với Pytest:
+```bash
+pytest -v
+```
+Kết quả kiểm thử bao gồm:
+* Kiểm thử thuật toán băm chunk Sliding Window.
+* Kiểm thử tính năng làm sạch dữ liệu UTF-8 NUL byte (`\x00`).
+* Kiểm thử các API Health Check và Root Endpoint.
+
+---
+
+## ⚖️ 7. Giấy Phép Bản Quyền (License)
+Dự án được phân phối dưới giấy phép **MIT License**. Bạn có thể tự do tham khảo, học tập và phát triển tiếp.
+
+---
+
+## ⭐ Ủng Hộ Dự Án (Show Your Support)
+
+Nếu bạn thấy dự án **DocIntel-Cloud** hữu ích hoặc giúp ích cho quá trình học tập / công việc của bạn, hãy dành tặng cho mình **1 Star (⭐)** ở góc trên bên phải GitHub để tiếp thêm động lực phát triển nhé! 
+
+Cảm ơn bạn rất nhiều! Chúc bạn học tập và làm việc hiệu quả! 🚀
