@@ -116,7 +116,7 @@ Tìm Top K đoạn trích liên quan nhất bằng phép đo Cosine Similarity:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/documents/search" \
   -H "Content-Type: application/json" \
-  -d '{"query": "kiến trúc mô hình", "top_k": 3}'
+  -d '{"query": "string", "top_k": 3}'
 ```
 
 ### 3. Hỏi đáp ngữ cảnh thông minh RAG (`POST /api/v1/qa/query`)
@@ -124,7 +124,7 @@ curl -X POST "http://localhost:8000/api/v1/documents/search" \
 ```bash
 curl -X POST "http://localhost:8000/api/v1/qa/query" \
   -H "Content-Type: application/json" \
-  -d '{"question": "Mô hình này có ưu điểm gì nổi bật?", "top_k": 3}'
+  -d '{"question": "string", "top_k": 3}'
 ```
 
 ---
