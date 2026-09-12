@@ -1,16 +1,14 @@
-# 🚀 DocIntel-Cloud: Hệ Thống Xử Lý Tài Liệu Thông Minh & Hỏi Đáp RAG (0-Cost Cloud-Native)
+# 🚀 DocIntel-Cloud: Hệ Thống Xử Lý Tài Liệu Thông Minh & Hỏi Đáp RAG 
 
 > **Dự án thực chiến chuẩn Enterprise dành cho Data Engineer & AI Engineer**  
-> **Chi phí vận hành: 100% Miễn Phí (0 VNĐ)** thông qua Docker local và hạ tầng AWS Free Tier.
-
 ---
 
 ## 🎯 1. Mục Đích Dự Án
 DocIntel-Cloud giải quyết bài toán phân tích và khai thác thông tin từ các tài liệu lớn của doanh nghiệp (báo cáo tài chính, hợp đồng pháp lý, tài liệu kỹ thuật dài hàng trăm trang PDF):
-- **Tự động hóa Ingestion Pipeline**: Tải file PDF, tự động trích xuất nội dung và làm sạch lỗi font, lọc bỏ các ký tự byte điều khiển UTF-8 lỗi (`\x00`).
-- **Phân đoạn thông minh (Chunking)**: Cắt văn bản theo thuật toán cửa sổ trượt (Sliding Window) với tham số `overlap` để bảo tồn trọn vẹn ngữ cảnh của câu.
+- **Tự động hóa Ingestion Pipeline**: Tải file PDF, tự động trích xuất nội dung và làm sạch, lọc bỏ các ký tự byte điều khiển UTF-8 lỗi (`\x00`).
+- **Phân đoạn thông minh (Chunking)**: Cắt văn bản theo thuật toán cửa sổ trượt (Sliding Window) với tham số `overlap` để bảo toàn trọn vẹn ngữ cảnh của câu.
 - **Lưu trữ Vector & HNSW Index**: Tích hợp PostgreSQL 16 với extension `pgvector`, sử dụng chỉ mục **HNSW (Hierarchical Navigable Small World)** cho phép tìm kiếm ngữ nghĩa theo độ tương đồng Cosine cực nhanh (< 5ms).
-- **Hỏi đáp thông minh (RAG QA)**: Kết nối với các mô hình ngôn ngữ lớn (Google Gemini / Groq Llama 3) để tổng hợp câu trả lời tự nhiên từ tài liệu nội bộ, kèm tính năng **trích dẫn chính xác nguồn dữ liệu (Citation Tracing)** giúp chống "chém gió" (Anti-Hallucination).
+- **Hỏi đáp thông minh (RAG QA)**: Kết nối với các mô hình ngôn ngữ lớn (LLM) để tổng hợp câu trả lời từ tài liệu nội bộ, kèm **trích dẫn chính xác nguồn dữ liệu (Citation Tracing)** giúp chống hiện tượng ảo giác (Hallucination).
 
 ---
 
@@ -22,7 +20,7 @@ DocIntel-Cloud giải quyết bài toán phân tích và khai thác thông tin t
           ▼ (HTTP REST / API)
 ┌─────────────────────────────────────────────────────────────┐
 │ FastAPI Serving Gateway (Cổng API trung tâm)                │
-│  - POST /upload: Tiếp nhận file PDF, băm chunk              │
+│  - POST /upload: Tiếp nhận file PDF, chia chunk              │
 │  - POST /search: Tìm kiếm vector tương đồng                 │
 │  - POST /qa/query: Tổng hợp câu trả lời bằng AI (RAG)       │
 └──────┬──────────────────────┬───────────────────────────────┘
@@ -50,10 +48,10 @@ DocIntel-Cloud giải quyết bài toán phân tích và khai thác thông tin t
 | Thành phần | Công nghệ sử dụng | Vai trò & Lý do lựa chọn |
 |---|---|---|
 | **API Framework** | FastAPI (Python 3.11, AsyncIO, Pydantic v2) | Đảm bảo hiệu năng xử lý bất đồng bộ (I/O-bound) cao nhất. |
-| **Object Storage** | MinIO Container | Giả lập chuẩn AWS S3 API (`boto3`), dễ dàng chuyển đổi sang S3 Cloud không cần đổi code. |
+| **Object Storage** | MinIO Container | Giả lập chuẩn AWS S3 API (`boto3`), dễ dàng chuyển đổi sang S3 Cloud. |
 | **Database & Vector Store** | PostgreSQL 16 + `pgvector` (HNSW Index) | Loại bỏ chi phí dùng Vector DB độc lập (Pinecone/Weaviate). Tìm kiếm vector sub-5ms. |
-| **Embedding Engine** | `sentence-transformers` / Gemini API | Chạy local offline 100% trên CPU hoặc gọi Free API Key. |
-| **LLM RAG Engine** | Groq Cloud (Llama-3.1-8b) / Gemini Flash | Tốc độ suy luận siêu nhanh (>500 tokens/sec), 0 USD. |
+| **Embedding Engine** | `sentence-transformers` | Chạy local offline 100% trên CPU. |
+| **LLM RAG Engine** | Groq Cloud (Llama-3.1-8b) / Gemini Flash | Tốc độ suy luận siêu nhanh (>500 tokens/sec). |
 | **Containerization** | Docker & Multi-Stage Dockerfile | Đóng gói tối ưu dung lượng image (~300MB), chạy Non-root `appuser`. |
 | **CI/CD Pipeline** | GitHub Actions & GHCR | Tự động hóa kiểm thử `pytest`, build và push Docker Image lên Registry. |
 
@@ -85,7 +83,7 @@ copy .env.example .env
 # Trên Linux/macOS:
 cp .env.example .env
 ```
-Sau đó mở file `.env` và điền `GEMINI_API_KEY` hoặc `GROQ_API_KEY` của bạn.
+Sau đó mở file `.env` và điền API Key của bạn.
 
 ### Bước 4: Chạy ứng dụng FastAPI
 * **Trên PowerShell**:
@@ -102,10 +100,10 @@ Sau đó mở file `.env` và điền `GEMINI_API_KEY` hoặc `GROQ_API_KEY` c�
 
 ## 📡 5. Hướng Dẫn Sử Dụng API
 
-Sau khi server khởi động, bạn có thể truy cập Swagger UI tương tác tại: **`http://localhost:8000/docs`** hoặc gọi API qua `curl`:
+Sau khi server khởi động, bạn có thể truy cập Swagger UI tại: **`http://localhost:8000/docs`** hoặc gọi API qua `curl`:
 
 ### 1. Tải lên tài liệu PDF (`POST /api/v1/documents/upload`)
-Tải file PDF lên hệ thống. Server sẽ tự động lưu vào MinIO, cắt thành các đoạn văn bản nhỏ và lưu vector vào Postgres:
+Tải file PDF lên hệ thống. Server sẽ tự động lưu vào MinIO, chia thành các đoạn văn bản nhỏ và lưu vector vào Postgres:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/documents/upload" \
   -F "file=@duong_dan_den_file.pdf"
@@ -136,14 +134,14 @@ Dự án tích hợp đầy đủ kiểm thử tự động với Pytest:
 pytest -v
 ```
 Kết quả kiểm thử bao gồm:
-* Kiểm thử thuật toán băm chunk Sliding Window.
+* Kiểm thử thuật toán chia chunk Sliding Window.
 * Kiểm thử tính năng làm sạch dữ liệu UTF-8 NUL byte (`\x00`).
 * Kiểm thử các API Health Check và Root Endpoint.
 
 ---
 
 ## ⚖️ 7. Giấy Phép Bản Quyền (License)
-Dự án được phân phối dưới giấy phép **MIT License**. Bạn có thể tự do tham khảo, học tập và phát triển tiếp.
+Dự án được phân phối dưới giấy phép **MIT License**.
 
 ---
 
