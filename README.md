@@ -9,7 +9,6 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 - **Context-Preserving Chunking**: Implements a sliding window token-chunking strategy with configurable overlap to preserve sentence boundaries and semantic context.
 - **Vector Storage & HNSW Indexing**: Integrates PostgreSQL 16 with `pgvector`, utilizing **HNSW (Hierarchical Navigable Small World)** indexing for sub-5ms cosine similarity vector search.
 - **Context-Augmented QA (RAG)**: Synthesizes ground-truth answers using state-of-the-art LLMs with **precise citation tracing** to mitigate hallucinations.
-=======
 - **Context-Augmented QA (RAG)**: Synthesizes ground-truth answers using LLMs with **precise citation tracing** to mitigate hallucinations.
 
 ---
