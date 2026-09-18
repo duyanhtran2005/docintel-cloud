@@ -17,30 +17,30 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 ## 🏗️ 2. System Architecture
 
 ```text
-[Client / User Application]
-          │
-          ▼ (HTTP REST / API)
-┌─────────────────────────────────────────────────────────────┐
-│ FastAPI Serving Gateway (Central API Hub)                   │
-│  - POST /upload: Document upload, async parsing & chunking  │
-│  - POST /search: Cosine similarity vector search            │
-│  - POST /qa/query: Context synthesis & citation tracing     │
-└──────┬──────────────────────┬───────────────────────────────┘
-       │                      │
-       ▼                      ▼
-┌──────────────────┐   ┌───────────────────────────────┐
-│ MinIO Storage    │   │ PostgreSQL 16 + pgvector      │
-│ (S3 Simulation)  │   │ (Relational + Vector DB)      │
-│ - Raw PDF store  │   │ - Tables: documents & chunks  │
-│ - Bucket:        │   │ - HNSW Index (Cosine Ops)     │
-│   `documents`    │   └───────────────────────────────┘
-└──────────────────┘                  ▲
-                                      │ (Dense Embeddings)
-                       ┌──────────────┴────────────────┐
-                       │ Embedding & LLM Engine        │
-                       │ - SentenceTransformers (Local)│
-                       │ - Google Gemini API / Groq    │
-                       └───────────────────────────────┘
+                                                  [Client / User Application]
+                                                            │
+                                                            ▼ (HTTP REST / API)
+                                                  ┌─────────────────────────────────────────────────────────────┐
+                                                  │ FastAPI Serving Gateway (Central API Hub)                   │
+                                                  │  - POST /upload: Document upload, async parsing & chunking  │
+                                                  │  - POST /search: Cosine similarity vector search            │
+                                                  │  - POST /qa/query: Context synthesis & citation tracing     │
+                                                  └──────┬──────────────────────┬───────────────────────────────┘
+                                                         │                      │
+                                                         ▼                      ▼
+                                                  ┌──────────────────┐   ┌───────────────────────────────┐
+                                                  │ MinIO Storage    │   │ PostgreSQL 16 + pgvector      │
+                                                  │ (S3 Simulation)  │   │ (Relational + Vector DB)      │
+                                                  │ - Raw PDF store  │   │ - Tables: documents & chunks  │
+                                                  │ - Bucket:        │   │ - HNSW Index (Cosine Ops)     │
+                                                  │   `documents`    │   └───────────────────────────────┘
+                                                  └──────────────────┘                  ▲
+                                                                                        │ (Dense Embeddings)
+                                                                         ┌──────────────┴────────────────┐
+                                                                         │ Embedding & LLM Engine        │
+                                                                         │ - SentenceTransformers (Local)│
+                                                                         │ - Google Gemini API / Groq    │
+                                                                         └───────────────────────────────┘
 ```
 
 ---
@@ -52,9 +52,7 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 | **API Framework** | FastAPI (Python 3.11, AsyncIO, Pydantic v2) | High-throughput asynchronous runtime optimized for I/O-bound operations. |
 | **Object Storage** | MinIO Container | S3-compatible API (`boto3` ready) ensuring zero-code migration to AWS S3. |
 | **Database & Vector Store** | PostgreSQL 16 + `pgvector` (HNSW Index) | Unified relational and vector database with sub-5ms cosine retrieval. |
-<<<<<<< HEAD
 | **Embedding Engine** | `sentence-transformers` | 100% offline, zero-cost CPU inference without external API rate limits. |
-=======
 | **Embedding Engine** | `sentence-transformers` | 100% offlines. |
 | **LLM RAG Engine** | Groq Cloud (Llama 3.1) / Gemini Flash | Ultra-fast context synthesis (>500 tokens/sec) with citation tracing. |
 | **Containerization** | Docker & Multi-Stage Dockerfile | Minimal production footprint (~300MB) executing as non-root `appuser`. |
