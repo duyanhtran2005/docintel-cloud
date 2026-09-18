@@ -89,8 +89,6 @@ copy .env.example .env
 cp .env.example .env
 ```
 Open `.env` and fill in your LLM API Key (`GEMINI_API_KEY` or `GROQ_API_KEY`).
-=======
-Open `.env` and fill in your LLM API Key.
 
 ### Step 4: Launch FastAPI Application Gateway
 * **PowerShell**:
