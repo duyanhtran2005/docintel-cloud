@@ -17,30 +17,30 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 ## 🏗️ 2. System Architecture
 
 ```text
-                                              [Client / User Application]
-                                                        │
-                                                        ▼ (HTTP REST / API)
-                                              ┌─────────────────────────────────────────────────────────────┐
-                                              │ FastAPI Serving Gateway (Central API Hub)                   │
-                                              │  - POST /upload: Document upload, async parsing & chunking  │
-                                              │  - POST /search: Cosine similarity vector search            │
-                                              │  - POST /qa/query: Context synthesis & citation tracing     │
-                                              └──────┬──────────────────────┬───────────────────────────────┘
-                                                     │                      │
-                                                     ▼                      ▼
-                                              ┌──────────────────┐   ┌───────────────────────────────┐
-                                              │ MinIO Storage    │   │ PostgreSQL 16 + pgvector      │
-                                              │ (S3 Simulation)  │   │ (Relational + Vector DB)      │
-                                              │ - Raw PDF store  │   │ - Tables: documents & chunks  │
-                                              │ - Bucket:        │   │ - HNSW Index (Cosine Ops)     │
-                                              │   `documents`    │   └───────────────────────────────┘
-                                              └──────────────────┘                  ▲
-                                                                                    │ (Dense Embeddings)
-                                                                     ┌──────────────┴────────────────┐
-                                                                     │ Embedding & LLM Engine        │
-                                                                     │ - SentenceTransformers (Local)│
-                                                                     │ - Google Gemini API / Groq    │
-                                                                     └───────────────────────────────┘
+                                        [Client / User Application]
+                                                  │
+                                                  ▼ (HTTP REST / API)
+                                        ┌─────────────────────────────────────────────────────────────┐
+                                        │ FastAPI Serving Gateway (Central API Hub)                   │
+                                        │  - POST /upload: Document upload, async parsing & chunking  │
+                                        │  - POST /search: Cosine similarity vector search            │
+                                        │  - POST /qa/query: Context synthesis & citation tracing     │
+                                        └──────┬──────────────────────┬───────────────────────────────┘
+                                               │                      │
+                                               ▼                      ▼
+                                        ┌──────────────────┐   ┌───────────────────────────────┐
+                                        │ MinIO Storage    │   │ PostgreSQL 16 + pgvector      │
+                                        │ (S3 Simulation)  │   │ (Relational + Vector DB)      │
+                                        │ - Raw PDF store  │   │ - Tables: documents & chunks  │
+                                        │ - Bucket:        │   │ - HNSW Index (Cosine Ops)     │
+                                        │   `documents`    │   └───────────────────────────────┘
+                                        └──────────────────┘                  ▲
+                                                                              │ (Dense Embeddings)
+                                                               ┌──────────────┴────────────────┐
+                                                               │ Embedding & LLM Engine        │
+                                                               │ - SentenceTransformers (Local)│
+                                                               │ - Google Gemini API / Groq    │
+                                                               └───────────────────────────────┘
 ```
 
 ---
