@@ -1,7 +1,10 @@
 import logging
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from db.database import engine
 from services.vector_store import VectorStore
@@ -45,8 +48,22 @@ app.include_router(ingest.router)
 app.include_router(query.router)
 app.include_router(qa.router)
 
-@app.get("/", tags=["Health Check"])
-async def root():
+# Đường dẫn tới thư mục static chứa giao diện Web
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+
+@app.get("/", tags=["Frontend"])
+async def serve_frontend(request: Request):
+    """
+    Hàm điều hướng thông minh:
+    - Nếu mở từ Trình duyệt web (Accept text/html) -> Phục vụ giao diện Chatbot & Upload PDF
+    - Nếu gọi từ Pytest hoặc API Client -> Trả về JSON trạng thái hệ thống
+    """
+    index_file = os.path.join(static_dir, "index.html")
+    accept_header = request.headers.get("accept", "")
+    
+    if "text/html" in accept_header and os.path.exists(index_file):
+        return FileResponse(index_file)
+        
     return {
         "system": "DocIntel Cloud API Gateway",
         "status": "online",

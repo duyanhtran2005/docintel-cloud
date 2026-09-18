@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocIntel AI - Enterprise Multi-Document Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    /* Styling cho Markdown content trong tin nhắn */
+    .prose-custom table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.875rem;
+    }
+    .prose-custom th, .prose-custom td {
+      border: 1px solid #475569;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+    .prose-custom th {
+      background-color: #1e293b;
+      color: #94a3b8;
+    }
+    .prose-custom tr:nth-child(even) {
+      background-color: #1e293b50;
+    }
+    .prose-custom ul, .prose-custom ol {
+      padding-left: 1.25rem;
+      margin: 0.5rem 0;
+      list-style-type: disc;
+    }
+    .prose-custom strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .prose-custom p {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 flex justify-between items-center shadow-lg">
+    <div class="flex items-center space-x-3">
+      <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-2.5 rounded-xl shadow-md">
+        <i class="fa-solid fa-brain text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-white flex items-center">
+          DocIntel AI <span class="ml-2 text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30">Multi-Doc Pro</span>
+        </h1>
+        <p class="text-xs text-slate-400">Enterprise RAG & Document Intelligence</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3">
+      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span> Systems Online
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- Cột trái: Upload PDF & Điều chỉnh tham số RAG -->
+    <section class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 flex flex-col backdrop-blur space-y-5">
+      <div>
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center">
+          <i class="fa-solid fa-file-pdf mr-2 text-rose-400"></i> Nạp Tài Liệu PDF
+        </h2>
+
+        <!-- Dropzone -->
+        <div id="dropzone" class="border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-800/40 hover:bg-slate-700/30 flex flex-col items-center justify-center">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2 group-hover:text-blue-400"></i>
+          <p class="text-sm font-medium text-slate-200">Kéo & thả file PDF vào đây</p>
+          <p class="text-xs text-slate-400 mt-1">hoặc nhấn để chọn file</p>
+          <input type="file" id="fileInput" accept=".pdf" class="hidden">
+        </div>
+
+        <div id="fileInfo" class="mt-3 hidden p-2.5 rounded-lg bg-slate-700/50 border border-slate-600 text-xs">
+          <p class="font-medium text-slate-200 truncate" id="fileName"></p>
+          <p class="text-slate-400" id="fileSize"></p>
+        </div>
+
+        <button id="uploadBtn" disabled class="mt-3 w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-xl transition shadow-lg shadow-blue-500/20 flex items-center justify-center space-x-2 text-sm">
+          <i class="fa-solid fa-bolt"></i>
+          <span>Nạp & Xử Lý Vector</span>
+        </button>
+
+        <div id="uploadStatus" class="mt-2 text-xs text-center hidden"></div>
+      </div>
+
+      <!-- Tham số RAG: Điều chỉnh Top K Chunks -->
+      <div class="pt-4 border-t border-slate-700/80">
+        <div class="flex justify-between items-center mb-2">
+          <label for="topKSlider" class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center">
+            <i class="fa-solid fa-sliders mr-2 text-indigo-400"></i> Ngữ Cảnh (Top K Chunks)
+          </label>
+          <span id="topKValue" class="text-xs font-bold bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30">10 chunks</span>
+        </div>
+        <input type="range" id="topKSlider" min="3" max="25" value="10" step="1" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+          💡 <strong>Khuyên dùng:</strong> Kéo lên <strong>10 - 15 chunks</strong> khi cần so sánh đối chiếu giữa 2 hoặc nhiều tài liệu PDF khác nhau!
+        </p>
+      </div>
+    </section>
+
+    <!-- Cột phải: Khung Chatbot AI & Nguồn Trích Dẫn -->
+    <section class="md:col-span-2 bg-slate-800/60 border border-slate-700/60 rounded-2xl flex flex-col backdrop-blur overflow-hidden">
+      
+      <!-- Khung hiển thị tin nhắn -->
+      <div id="chatMessages" class="flex-1 p-6 overflow-y-auto space-y-5 max-h-[600px] min-h-[450px]">
+        <!-- Bot Welcome Message -->
+        <div class="flex items-start space-x-3">
+          <div class="bg-indigo-600 text-white p-2 rounded-lg text-sm shadow">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div class="bg-slate-700/70 border border-slate-600 rounded-2xl rounded-tl-none p-4 max-w-2xl text-sm leading-relaxed">
+            Xin chào! Tôi là Trợ lý Phân tích Tài liệu Doanh nghiệp DocIntel Pro. Hãy tải lên các tài liệu PDF của bạn (có thể nạp nhiều file), sau đó đặt câu hỏi tóm tắt hoặc yêu cầu so sánh đối chiếu giữa các tài liệu. Tôi sẽ tổng hợp và trích dẫn đầy đủ nguồn gốc! 📄✨
+          </div>
+        </div>
+      </div>
+
+      <!-- Khung nhập câu hỏi -->
+      <div class="p-4 bg-slate-800 border-t border-slate-700">
+        <form id="chatForm" class="flex items-center space-x-3">
+          <input type="text" id="queryInput" placeholder="Hỏi bất kỳ điều gì, ví dụ: 'So sánh sự khác nhau về kiến trúc và hiệu năng giữa DeepSeek và Mixtral'..." class="flex-1 bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 text-slate-100 placeholder-slate-500 transition">
+          <button type="submit" id="sendBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-sm font-medium transition shadow-lg shadow-indigo-500/20 flex items-center">
+            <i class="fa-solid fa-paper-plane mr-2"></i> Gửi
+          </button>
+        </form>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- POPUP MODAL: XEM CHI TIẾT TOÀN VĂN NGUỒN TRÍCH DẪN -->
+  <div id="citationModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="p-4 bg-slate-800/90 border-b border-slate-700 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <span class="p-2 rounded-lg bg-rose-500/20 text-rose-400">
+            <i class="fa-solid fa-file-pdf"></i>
+          </span>
+          <div>
+            <h3 id="modalFilename" class="text-sm font-semibold text-slate-200">Tên file</h3>
+            <div class="flex space-x-2 text-[11px] text-slate-400 mt-0.5">
+              <span id="modalChunkIndex" class="bg-slate-700 px-2 py-0.5 rounded">Chunk #0</span>
+              <span id="modalRelevance" class="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">Relevance: 0.85</span>
+            </div>
+          </div>
+        </div>
+        <button id="closeModalBtn" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Toàn văn đoạn trích) -->
+      <div class="p-6 overflow-y-auto flex-1 bg-slate-900/50">
+        <p class="text-xs text-slate-400 uppercase font-semibold mb-2 tracking-wider">Toàn bộ văn bản gốc trích xuất:</p>
+        <div id="modalFullContent" class="text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-wrap bg-slate-950/60 p-4 rounded-xl border border-slate-800 select-text">
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-3 bg-slate-800 border-t border-slate-700 flex justify-end">
+        <button id="closeModalBtn2" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-lg transition">
+          Đóng cửa sổ
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const queryInput = document.getElementById('queryInput');
+    const topKSlider = document.getElementById('topKSlider');
+    const topKValue = document.getElementById('topKValue');
+
+    // Modal elements
+    const citationModal = document.getElementById('citationModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const closeModalBtn2 = document.getElementById('closeModalBtn2');
+    const modalFilename = document.getElementById('modalFilename');
+    const modalChunkIndex = document.getElementById('modalChunkIndex');
+    const modalRelevance = document.getElementById('modalRelevance');
+    const modalFullContent = document.getElementById('modalFullContent');
+
+    // Lưu trữ citations của câu trả lời gần nhất
+    let currentCitations = [];
+
+    // Cập nhật giá trị Top K Slider
+    topKSlider.addEventListener('input', (e) => {
+      topKValue.textContent = e.target.value + ' chunks';
+    });
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+    function handleFile(file) {
+      if (!file || !file.name.endsWith('.pdf')) {
+        alert('Vui lòng chọn file định dạng PDF!');
+        return;
+      }
+      fileName.textContent = file.name;
+      fileSize.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+      fileInfo.classList.remove('hidden');
+      uploadBtn.disabled = false;
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      uploadBtn.disabled = true;
+      uploadStatus.classList.remove('hidden');
+      uploadStatus.innerHTML = '<span class="text-blue-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang tải lên MinIO & băm vector...</span>';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/v1/documents/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          uploadStatus.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> Đã nạp thành công "${data.filename}" (${data.chunks_count} chunks)!</span>`;
+        } else {
+          uploadStatus.innerHTML = `<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Lỗi: ${data.detail || 'Không thể upload'}</span>`;
+          uploadBtn.disabled = false;
+        }
+      } catch (err) {
+        uploadStatus.innerHTML = `<span class="text-rose-400">Lỗi kết nối: ${err.message}</span>`;
+        uploadBtn.disabled = false;
+      }
+    });
+
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = queryInput.value.trim();
+      if (!question) return;
+
+      appendMessage('user', question);
+      queryInput.value = '';
+
+      const loadingId = appendLoading();
+      const topK = parseInt(topKSlider.value, 10);
+
+      try {
+        const res = await fetch('/api/v1/qa/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: question, top_k: topK })
+        });
+        const data = await res.json();
+        document.getElementById(loadingId).remove();
+
+        if (res.ok) {
+          currentCitations = data.citations || [];
+          appendMessage('bot', data.answer, data.citations, data.execution_time_ms);
+        } else {
+          appendMessage('bot', 'Lỗi hệ thống: ' + (data.detail || 'Không thể trả lời'));
+        }
+      } catch (err) {
+        document.getElementById(loadingId).remove();
+        appendMessage('bot', 'Lỗi kết nối: ' + err.message);
+      }
+    });
+
+    function appendMessage(role, text, citations = [], executionTime = null) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = role === 'user' ? 'flex items-start justify-end space-x-3' : 'flex items-start space-x-3';
+
+      let citationHtml = '';
+      if (citations && citations.length > 0) {
+        citationHtml = `
+          <div class="mt-4 pt-3 border-t border-slate-600/60 text-xs text-slate-400">
+            <div class="flex justify-between items-center mb-2">
+              <p class="font-semibold text-slate-300 flex items-center">
+                <i class="fa-solid fa-quote-left mr-1.5 text-indigo-400"></i> Nguồn trích dẫn (${citations.length} chunks liên quan nhất):
+              </p>
+              ${executionTime ? `<span class="text-[11px] text-slate-400"><i class="fa-regular fa-clock mr-1"></i>${executionTime} ms</span>` : ''}
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+        `;
+
+        citations.forEach((c, idx) => {
+          const fn = c.filename || 'Tài liệu';
+          citationHtml += `
+            <button onclick="openCitationModal(${idx})" class="text-left bg-slate-800/90 hover:bg-slate-700/80 p-2.5 rounded-xl border border-slate-700/80 transition flex flex-col justify-between group shadow-sm">
+              <div class="flex items-center justify-between w-full mb-1">
+                <span class="text-indigo-400 font-semibold text-[11px] flex items-center truncate">
+                  <i class="fa-solid fa-file-pdf mr-1 text-rose-400"></i> [Nguồn ${idx + 1}] ${fn}
+                </span>
+                <span class="text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-300">#${c.chunk_index}</span>
+              </div>
+              <p class="text-slate-300 text-[11px] line-clamp-2 leading-relaxed">"${c.content_snippet}"</p>
+              <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500 group-hover:text-indigo-300 pt-1">
+                <span>Score: ${(c.relevance_score * 100).toFixed(1)}%</span>
+                <span class="font-medium">Xem toàn văn <i class="fa-solid fa-arrow-right text-[9px] ml-0.5"></i></span>
+              </div>
+            </button>
+          `;
+        });
+        citationHtml += '</div></div>';
+      }
+
+      if (role === 'user') {
+        msgDiv.innerHTML = `
+          <div class="bg-blue-600 text-white rounded-2xl rounded-tr-none p-4 max-w-xl text-sm leading-relaxed shadow">
+            ${text}
+          </div>
+          <div class="bg-slate-700 text-slate-200 p-2 rounded-lg text-sm shadow">
+            <i class="fa-solid fa-user"></i>
+          </div>
+        `;
+      } else {
+        // Dùng marked.js để render bảng markdown, danh sách, in đậm đẹp mắt
+        const formattedHtml = marked.parse(text);
+        msgDiv.innerHTML = `
+          <div class="bg-indigo-600 text-white p-2 rounded-lg text-sm shadow">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div class="bg-slate-700/70 border border-slate-600 rounded-2xl rounded-tl-none p-4 max-w-3xl text-sm leading-relaxed shadow-md">
+            <div class="prose-custom text-slate-100">${formattedHtml}</div>
+            ${citationHtml}
+          </div>
+        `;
+      }
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendLoading() {
+      const id = 'loading-' + Date.now();
+      const loadDiv = document.createElement('div');
+      loadDiv.id = id;
+      loadDiv.className = 'flex items-start space-x-3';
+      loadDiv.innerHTML = `
+        <div class="bg-indigo-600 text-white p-2 rounded-lg text-sm shadow">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="bg-slate-700/70 border border-slate-600 rounded-2xl rounded-tl-none p-4 text-sm text-slate-400 flex items-center space-x-2">
+          <i class="fa-solid fa-circle-notch fa-spin text-indigo-400"></i>
+          <span>Đang tìm kiếm trên đa tài liệu & AI đang phân tích đối chiếu...</span>
+        </div>
+      `;
+      chatMessages.appendChild(loadDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return id;
+    }
+
+    // Xử lý mở Modal xem toàn văn nguồn trích dẫn
+    window.openCitationModal = function(index) {
+      if (!currentCitations || !currentCitations[index]) return;
+      const c = currentCitations[index];
+      modalFilename.textContent = c.filename || 'Tài liệu PDF';
+      modalChunkIndex.textContent = `Chunk #${c.chunk_index}`;
+      modalRelevance.textContent = `Độ liên quan: ${(c.relevance_score * 100).toFixed(1)}%`;
+      modalFullContent.textContent = c.full_content || c.content_snippet;
+      citationModal.classList.remove('hidden');
+    };
+
+    function closeModal() {
+      citationModal.classList.add('hidden');
+    }
+
+    closeModalBtn.addEventListener('click', closeModal);
+    closeModalBtn2.addEventListener('click', closeModal);
+    citationModal.addEventListener('click', (e) => {
+      if (e.target === citationModal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

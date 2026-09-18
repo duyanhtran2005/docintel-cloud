@@ -17,9 +17,7 @@ class VectorStore:
         Khởi tạo extension 'vector' và tự động tạo toàn bộ bảng DB + Index HNSW.
         """
         async with engine.begin() as conn:
-            # Kích hoạt extension vector trước
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-            # Tạo các bảng nếu chưa có
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Đã khởi tạo Database schema và HNSW Index thành công!")
 
@@ -36,7 +34,6 @@ class VectorStore:
     ) -> List[DocumentChunk]:
         """
         Insert hàng loạt (batch) các chunk văn bản cùng vector embedding 768 chiều vào Postgres.
-        chunks_data format: [{'chunk_index': 0, 'content': '...', 'embedding': [...]}, ...]
         """
         chunk_objects = [
             DocumentChunk(
@@ -54,24 +51,23 @@ class VectorStore:
         return chunk_objects
 
     async def search_similar_chunks(
-        self, session: AsyncSession, query_vector: List[float], top_k: int = 5
-    ) -> List[Tuple[DocumentChunk, float]]:
+        self, session: AsyncSession, query_vector: List[float], top_k: int = 8
+    ) -> List[Tuple[DocumentChunk, float, str]]:
         """
-        Tìm kiếm Top-K chunk có độ tương đồng Cosine (Cosine Similarity) cao nhất với query_vector.
-        Sử dụng toán tử pgvector Cosine Distance (<=>).
-        Khoảng cách càng nhỏ (gần 0) -> Độ tương đồng càng cao.
+        Tìm kiếm Top-K chunk có độ tương đồng Cosine cao nhất với HNSW Index.
+        Tự động JOIN với bảng Document để lấy tên file PDF gốc (filename).
         """
-        # Trong pgvector: cosine_distance = 1 - cosine_similarity
         distance_col = DocumentChunk.embedding.cosine_distance(query_vector).label("distance")
 
         stmt = (
-            select(DocumentChunk, distance_col)
-            .order_by(distance_col.asc())  # Lấy khoảng cách nhỏ nhất
+            select(DocumentChunk, distance_col, Document.filename)
+            .join(Document, DocumentChunk.document_id == Document.id)
+            .order_by(distance_col.asc())
             .limit(top_k)
         )
 
         result = await session.execute(stmt)
         rows = result.all()
         
-        # Trả về danh sách tuple: (DocumentChunk, distance_score)
-        return [(row[0], float(row[1])) for row in rows]
+        # Trả về danh sách: [(DocumentChunk, distance_score, filename), ...]
+        return [(row[0], float(row[1]), str(row[2])) for row in rows]

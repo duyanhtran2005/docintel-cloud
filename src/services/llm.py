@@ -26,7 +26,7 @@ class LLMService:
         self.groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
         self.groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
         
-        # Đọc cấu hình Gemini (Có thể tùy chỉnh GEMINI_MODEL linh hoạt)
+        # Đọc cấu hình Gemini
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
         self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
         
@@ -47,24 +47,31 @@ class LLMService:
 
     def format_prompt(self, question: str, contexts: List[Dict[str, Any]]) -> str:
         """
-        Ghép ngữ cảnh và câu hỏi vào Prompt Template chuẩn RAG.
+        Ghép ngữ cảnh và câu hỏi vào Prompt Template chuẩn RAG Đa Tài Liệu (Multi-Document RAG).
         """
         context_str = ""
         for i, ctx in enumerate(contexts, 1):
-            context_str += f"\n[Nguồn {i} - Chunk Index {ctx.get('chunk_index')}]:\n{ctx.get('content')}\n"
+            fname = ctx.get("filename", "Tài liệu")
+            cidx = ctx.get("chunk_index", 0)
+            content = ctx.get("content", "")
+            context_str += f"\n--- [Nguồn {i} | File: {fname} | Chunk #{cidx}] ---\n{content}\n"
 
-        prompt = f"""Bạn là một Chuyên gia Trợ lý Phân tích Tài liệu Doanh nghiệp (DocIntel AI Assistant).
-Dưới đây là các thông tin ngữ cảnh được trích xuất trực tiếp từ cơ sở dữ liệu tài liệu:
+        prompt = f"""Bạn là một Chuyên gia Trợ lý Phân tích Tài liệu Doanh nghiệp Cấp cao (Enterprise Document Intelligence & Research Assistant).
+Dưới đây là các đoạn thông tin ngữ cảnh được trích xuất từ cơ sở dữ liệu các tài liệu đã nạp:
 
---- BẮT ĐẦU NGỮ CẢNH ---
+=== BẮT ĐẦU DỮ LIỆU NGỮ CẢNH ===
 {context_str}
---- KẾT THÚC NGỮ CẢNH ---
+=== KẾT THÚC DỮ LIỆU NGỮ CẢNH ===
 
-Nhiệm vụ của bạn:
-1. Dựa VÀO ĐÚNG ngữ cảnh được cung cấp ở trên để trả lời câu hỏi của người dùng.
-2. Trả lời một cách chính xác, ngắn gọn, súc tích và có cấu trúc rõ ràng.
-3. Nếu ngữ cảnh không chứa đủ thông tin để trả lời, hãy lịch sự thông báo rằng tài liệu chưa đề cập đến nội dung này.
-4. Cuối câu trả lời, hãy trích dẫn các [Nguồn X] tương ứng mà bạn đã sử dụng.
+HƯỚNG DẪN TRẢ LỜI:
+1. Trả lời bằng Tiếng Việt một cách tự nhiên, chuyên sâu, khách quan và mạch lạc.
+2. Dựa HOÀN TOÀN vào ngữ cảnh được cung cấp ở trên.
+3. ĐẶC BIỆT KHI CÂU HỎI YÊU CẦU SO SÁNH (ví dụ so sánh giữa 2 hay nhiều mô hình/tài liệu khác nhau):
+   - Hãy tổng hợp và đối chiếu toàn bộ các thông tin tìm thấy từ tất cả các file tài liệu trong ngữ cảnh.
+   - Trình bày rõ ràng các tiêu chí so sánh: Kiến trúc (Architecture), Hiệu năng (Performance/Benchmarks), Tính mới/Ưu nhược điểm.
+   - Khuyến khích sử dụng Bảng so sánh (Markdown Table) hoặc phân mục gạch đầu dòng có cấu trúc đẹp mắt.
+4. Cuối các ý quan trọng hoặc cuối câu trả lời, hãy chú thích rõ các [Nguồn X] (kèm tên file tương ứng) mà bạn đã trích xuất thông tin.
+5. Nếu một khía cạnh nào đó chưa có trong ngữ cảnh, hãy nói rõ tài liệu chưa đề cập khía cạnh đó.
 
 Câu hỏi của người dùng: {question}
 Trả lời:"""
@@ -72,11 +79,25 @@ Trả lời:"""
 
     async def generate_answer(self, question: str, contexts: List[Dict[str, Any]]) -> str:
         """
-        Sinh câu trả lời từ LLM (Ưu tiên Groq Cloud -> Gemini -> Mock).
+        Sinh câu trả lời từ LLM (Ưu tiên Gemini SDK -> Groq -> Mock).
         """
         prompt = self.format_prompt(question, contexts)
 
-        # 1. Thử gọi Groq Cloud API
+        # 1. Gọi Gemini qua SDK chính thức (Tối ưu nhất cho RAG Context lớn)
+        if self.gemini_api_key and HAS_GENAI_SDK:
+            try:
+                model = genai.GenerativeModel(
+                    self.gemini_model,
+                    generation_config={"max_output_tokens": 2500, "temperature": 0.2}
+                )
+                response = model.generate_content(prompt)
+                if response.text:
+                    logger.info(f"Sinh câu trả lời thành công từ Gemini SDK ({self.gemini_model}).")
+                    return response.text
+            except Exception as e:
+                logger.error(f"Lỗi gọi Gemini SDK ({self.gemini_model}): {e}")
+
+        # 2. Thử gọi Groq Cloud API
         if self.groq_client:
             try:
                 chat_completion = await self.groq_client.chat.completions.create(
@@ -86,7 +107,7 @@ Trả lời:"""
                     ],
                     model=self.groq_model,
                     temperature=0.2,
-                    max_tokens=500, # Giảm max_tokens để tránh dính Rate Limit của Groq Free Tier
+                    max_tokens=1200,
                 )
                 answer = chat_completion.choices[0].message.content
                 logger.info(f"Sinh câu trả lời thành công từ Groq Cloud API ({self.groq_model}).")
@@ -94,22 +115,11 @@ Trả lời:"""
             except Exception as e:
                 logger.error(f"Lỗi gọi Groq Cloud API: {e}")
 
-        # 2. Thử gọi Gemini qua SDK chính thức (Tự chọn model từ GEMINI_MODEL)
-        if self.gemini_api_key and HAS_GENAI_SDK:
-            try:
-                model = genai.GenerativeModel(self.gemini_model)
-                response = model.generate_content(prompt)
-                if response.text:
-                    logger.info(f"Sinh câu trả lời thành công từ Gemini SDK ({self.gemini_model}).")
-                    return response.text
-            except Exception as e:
-                logger.error(f"Lỗi gọi Gemini SDK ({self.gemini_model}): {e}")
-
-        # 3. Thử gọi Gemini qua REST HTTP động (Nếu chưa cài SDK)
+        # 3. Thử gọi Gemini qua REST HTTP
         if self.gemini_api_key:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent?key={self.gemini_api_key}"
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                async with httpx.AsyncClient(timeout=25.0) as client:
                     response = await client.post(
                         url,
                         json={"contents": [{"parts": [{"text": prompt}]}]}
@@ -121,8 +131,6 @@ Trả lời:"""
                             answer = candidates[0]["content"]["parts"][0]["text"]
                             logger.info(f"Sinh câu trả lời thành công từ Gemini REST API ({self.gemini_model}).")
                             return answer
-                    else:
-                        logger.error(f"Lỗi Gemini REST API HTTP {response.status_code}: {response.text}")
             except Exception as e:
                 logger.error(f"Lỗi kết nối Gemini REST API: {e}")
 

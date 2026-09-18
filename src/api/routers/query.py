@@ -20,23 +20,17 @@ async def search_documents(
 ):
     """
     Endpoint tìm kiếm vector ngữ nghĩa (Semantic Vector Search):
-    1. Mã hóa câu hỏi (query string) thành Vector Embedding 768 chiều.
-    2. Thực hiện Cosine Similarity Search bằng HNSW Index trong PostgreSQL.
-    3. Trả về Top K đoạn văn bản có khoảng cách gần nhất.
     """
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Câu truy vấn tìm kiếm không được để rỗng!")
 
     try:
-        # 1. Mã hóa query
         query_vector = await embedder_service.get_embedding(request.query)
 
-        # 2. Tìm kiếm Vector Similarity
         raw_results = await vector_store_service.search_similar_chunks(
             db, query_vector=query_vector, top_k=request.top_k
         )
 
-        # 3. Đóng gói Response
         formatted_results = [
             SearchResultItem(
                 chunk_id=chunk.id,
@@ -45,7 +39,7 @@ async def search_documents(
                 content=chunk.content,
                 distance=distance
             )
-            for chunk, distance in raw_results
+            for chunk, distance, *rest in raw_results
         ]
 
         return SearchResponse(
