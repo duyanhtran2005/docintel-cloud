@@ -52,7 +52,6 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 | **API Framework** | FastAPI (Python 3.11, AsyncIO, Pydantic v2) | High-throughput asynchronous runtime optimized for I/O-bound operations. |
 | **Object Storage** | MinIO Container | S3-compatible API (`boto3` ready) ensuring zero-code migration to AWS S3. |
 | **Database & Vector Store** | PostgreSQL 16 + `pgvector` (HNSW Index) | Unified relational and vector database with sub-5ms cosine retrieval. |
-| **Embedding Engine** | `sentence-transformers` | 100% offline, zero-cost CPU inference without external API rate limits. |
 | **Embedding Engine** | `sentence-transformers` | 100% offlines. |
 | **LLM RAG Engine** | Groq Cloud (Llama 3.1) / Gemini Flash | Ultra-fast context synthesis (>500 tokens/sec) with citation tracing. |
 | **Containerization** | Docker & Multi-Stage Dockerfile | Minimal production footprint (~300MB) executing as non-root `appuser`. |
