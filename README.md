@@ -8,11 +8,9 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 - **Automated Ingestion Pipeline**: Ingests raw PDFs, extracts text streams, and performs rigorous data sanitization (eliminating corrupted UTF-8 control bytes like `\x00`).
 - **Context-Preserving Chunking**: Implements a sliding window token-chunking strategy with configurable overlap to preserve sentence boundaries and semantic context.
 - **Vector Storage & HNSW Indexing**: Integrates PostgreSQL 16 with `pgvector`, utilizing **HNSW (Hierarchical Navigable Small World)** indexing for sub-5ms cosine similarity vector search.
-<<<<<<< HEAD
 - **Context-Augmented QA (RAG)**: Synthesizes ground-truth answers using state-of-the-art LLMs with **precise citation tracing** to mitigate hallucinations.
 =======
 - **Context-Augmented QA (RAG)**: Synthesizes ground-truth answers using LLMs with **precise citation tracing** to mitigate hallucinations.
->>>>>>> cccbf642653a5485256cbc1ac06d8f3123cebd95
 
 ---
 
@@ -58,7 +56,6 @@ DocIntel-Cloud is engineered to automate the ingestion, indexing, and semantic e
 | **Embedding Engine** | `sentence-transformers` | 100% offline, zero-cost CPU inference without external API rate limits. |
 =======
 | **Embedding Engine** | `sentence-transformers` | 100% offlines. |
->>>>>>> cccbf642653a5485256cbc1ac06d8f3123cebd95
 | **LLM RAG Engine** | Groq Cloud (Llama 3.1) / Gemini Flash | Ultra-fast context synthesis (>500 tokens/sec) with citation tracing. |
 | **Containerization** | Docker & Multi-Stage Dockerfile | Minimal production footprint (~300MB) executing as non-root `appuser`. |
 | **CI/CD Pipeline** | GitHub Actions & GHCR | Automated linting, pytest suites, and automated container image publishing. |
@@ -91,11 +88,9 @@ copy .env.example .env
 # Linux / macOS:
 cp .env.example .env
 ```
-<<<<<<< HEAD
 Open `.env` and fill in your LLM API Key (`GEMINI_API_KEY` or `GROQ_API_KEY`).
 =======
 Open `.env` and fill in your LLM API Key.
->>>>>>> cccbf642653a5485256cbc1ac06d8f3123cebd95
 
 ### Step 4: Launch FastAPI Application Gateway
 * **PowerShell**:
